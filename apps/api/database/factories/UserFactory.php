@@ -23,11 +23,13 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        // `role` is not in the model's $fillable (privilege boundary), so it
+        // can't be set here via mass assignment — it's applied in configure()
+        // and overridable via the admin() state.
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'emailVerified' => true,
-            'role' => 'agent',
         ];
     }
 
@@ -37,7 +39,13 @@ class UserFactory extends Factory
      */
     public function configure(): static
     {
-        return $this->afterCreating(function (User $user) {
+        return $this->afterMaking(function (User $user) {
+            // Default role, set outside mass assignment since `role` is guarded.
+            // A state (e.g. admin()) runs later and can override it.
+            if (empty($user->role)) {
+                $user->role = 'agent';
+            }
+        })->afterCreating(function (User $user) {
             $user->accounts()->create([
                 'accountId' => $user->id,
                 'providerId' => 'credential',
@@ -54,5 +62,14 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'emailVerified' => false,
         ]);
+    }
+
+    /**
+     * Indicate that the user is an admin. Sets the guarded `role` attribute
+     * directly rather than through mass assignment.
+     */
+    public function admin(): static
+    {
+        return $this->afterMaking(fn (User $user) => $user->role = 'admin');
     }
 }

@@ -33,6 +33,10 @@ class User extends Authenticatable
     /**
      * The attributes that are mass assignable.
      *
+     * `role` is intentionally excluded: it is a privilege boundary and must
+     * never be settable from request data via mass assignment. Set it
+     * explicitly in trusted code (seeders / admin actions / factory states).
+     *
      * @var list<string>
      */
     protected $fillable = [
@@ -41,7 +45,6 @@ class User extends Authenticatable
         'email',
         'emailVerified',
         'image',
-        'role',
     ];
 
     /**

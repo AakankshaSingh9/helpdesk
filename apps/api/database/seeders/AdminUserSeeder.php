@@ -31,11 +31,14 @@ class AdminUserSeeder extends Seeder
             ['email' => $email],
             [
                 'name' => $name,
-                'role' => 'admin',
                 'emailVerified' => true,
                 'deletedAt' => null,
             ],
         );
+
+        // `role` is not mass-assignable (privilege boundary), so set it here in
+        // trusted seeder code via forceFill rather than through updateOrCreate.
+        $user->forceFill(['role' => 'admin'])->save();
 
         // Upsert the credential account that stores the password hash.
         $user->accounts()->updateOrCreate(
