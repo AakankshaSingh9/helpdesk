@@ -1,0 +1,14 @@
+{
+  "name": "helpdesk",
+  "private": true,
+  "description": "AI Powered Ticket Management System — monorepo (Laravel API + Vue SPA)",
+  "scripts": {
+    "up": "docker compose up",
+    "up:build": "docker compose up --build",
+    "down": "docker compose down",
+    "logs": "docker compose logs -f",
+    "api": "docker compose exec api sh",
+    "web": "docker compose exec web sh",
+    "db": "docker compose exec db psql -U helpdesk -d helpdesk"
+  }
+}
