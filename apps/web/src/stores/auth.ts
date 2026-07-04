@@ -53,6 +53,9 @@ export const auth = {
   get isAuthenticated() {
     return state.user !== null
   },
+  get isAdmin() {
+    return state.user?.role === 'admin'
+  },
   loadUser,
   login,
   logout,

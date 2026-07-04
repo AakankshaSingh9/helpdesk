@@ -2,11 +2,18 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { auth } from '../stores/auth'
 import LoginView from '../views/LoginView.vue'
 import HomeView from '../views/HomeView.vue'
+import UsersView from '../views/UsersView.vue'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/home' },
   { path: '/login', name: 'login', component: LoginView, meta: { guestOnly: true } },
   { path: '/home', name: 'home', component: HomeView, meta: { requiresAuth: true } },
+  {
+    path: '/users',
+    name: 'users',
+    component: UsersView,
+    meta: { requiresAdmin: true },
+  },
   { path: '/:pathMatch(.*)*', redirect: '/home' },
 ]
 
@@ -20,6 +27,9 @@ const router = createRouter({
 router.beforeEach((to) => {
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+  if (to.meta.requiresAdmin && !auth.isAdmin) {
+    return { name: 'home' }
   }
   if (to.meta.guestOnly && auth.isAuthenticated) {
     return { name: 'home' }
