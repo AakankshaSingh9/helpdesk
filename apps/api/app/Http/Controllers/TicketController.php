@@ -6,6 +6,7 @@ use App\Http\Resources\TicketResource;
 use App\Models\Ticket;
 use App\Services\Ai\OpenAiClient;
 use App\Services\Ai\ReplyPolisher;
+use App\Services\Ai\TicketSummarizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -129,6 +130,32 @@ class TicketController extends Controller
             'data' => [
                 'polished' => $polished ?? $validated['draft'],
                 'aiApplied' => $polished !== null,
+                'reason' => $reason,
+            ],
+        ]);
+    }
+
+    /**
+     * Summarise the whole ticket thread so an agent can get up to speed on a
+     * long conversation at a glance.
+     *
+     * `aiApplied` is false when AI is disabled or the call failed — `summary`
+     * is then null, and the UI keeps showing the full thread. `reason`
+     * distinguishes "AI is off" from "AI is on but the call failed" so the UI
+     * can advise the agent accurately.
+     */
+    public function summarize(Ticket $ticket, TicketSummarizer $summarizer, OpenAiClient $ai): JsonResponse
+    {
+        $ticket->load(['contact', 'messages' => fn ($q) => $q->oldest('id')]);
+
+        $summary = $summarizer->summarize($ticket);
+
+        $reason = $summary !== null ? null : ($ai->enabled() ? 'failed' : 'disabled');
+
+        return response()->json([
+            'data' => [
+                'summary' => $summary,
+                'aiApplied' => $summary !== null,
                 'reason' => $reason,
             ],
         ]);

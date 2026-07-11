@@ -5,6 +5,7 @@ import HomeView from '../views/HomeView.vue'
 import UsersView from '../views/UsersView.vue'
 import TicketsView from '../views/TicketsView.vue'
 import TicketView from '../views/TicketView.vue'
+import DashboardView from '../views/DashboardView.vue'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/home' },
@@ -16,6 +17,7 @@ const routes: RouteRecordRaw[] = [
     component: UsersView,
     meta: { requiresAdmin: true },
   },
+  { path: '/dashboard', name: 'dashboard', component: DashboardView, meta: { requiresAuth: true } },
   { path: '/tickets', name: 'tickets', component: TicketsView, meta: { requiresAuth: true } },
   {
     path: '/tickets/:id',

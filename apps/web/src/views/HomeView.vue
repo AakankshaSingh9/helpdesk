@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import { Inbox, Sparkles, BookOpen, Users, Ticket } from 'lucide-vue-next'
+import { Inbox, Sparkles, BookOpen, Users, Ticket, LayoutDashboard } from 'lucide-vue-next'
 import { auth } from '../stores/auth'
 
 const firstName = () => auth.state.user?.name?.split(/\s+/)[0] ?? 'there'
@@ -32,6 +32,14 @@ const cards = [
       <p class="mt-2 text-muted">You're signed in to the AI Helpdesk.</p>
 
       <div class="mt-4 flex flex-wrap gap-2">
+        <RouterLink
+          to="/dashboard"
+          class="inline-flex items-center gap-1.5 rounded border border-line bg-card px-3 py-1.5 text-sm font-medium text-ink transition-colors duration-150 hover:bg-app hover:text-accent"
+        >
+          <LayoutDashboard :size="18" :stroke-width="1.5" />
+          <span>Dashboard</span>
+        </RouterLink>
+
         <RouterLink
           to="/tickets"
           class="inline-flex items-center gap-1.5 rounded border border-line bg-card px-3 py-1.5 text-sm font-medium text-ink transition-colors duration-150 hover:bg-app hover:text-accent"

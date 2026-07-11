@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { ArrowLeft, Loader2, Send, Sparkles, UserRound } from 'lucide-vue-next'
+import { ArrowLeft, Loader2, ScrollText, Send, Sparkles, UserRound } from 'lucide-vue-next'
 import { api, ApiError } from '../lib/api'
 
 const props = defineProps<{ id: string }>()
@@ -139,6 +139,34 @@ const initials = (m: Message) => {
 }
 
 const messages = computed(() => ticket.value?.messages ?? [])
+
+// ── AI summary ────────────────────────────────────────────────────────────────
+const summary = ref<string | null>(null)
+const summarizing = ref(false)
+const summaryNote = ref<string | null>(null)
+
+async function summarize(): Promise<void> {
+  if (summarizing.value) return
+  summarizing.value = true
+  summaryNote.value = null
+  try {
+    const res = await api<{
+      data: { summary: string | null; aiApplied: boolean; reason: 'disabled' | 'failed' | null }
+    }>(`/api/tickets/${props.id}/summarize`, { method: 'POST' })
+    if (res.data.aiApplied && res.data.summary) {
+      summary.value = res.data.summary
+    } else if (res.data.reason === 'failed') {
+      summaryNote.value = 'AI is temporarily unavailable — please try again later.'
+    } else {
+      summaryNote.value = 'AI is off — set OPENAI_API_KEY and AI_ENABLED to enable Summarize.'
+    }
+  } catch (e) {
+    summaryNote.value =
+      e instanceof ApiError ? e.message : 'Could not summarize this ticket. Please try again.'
+  } finally {
+    summarizing.value = false
+  }
+}
 
 // ── Reply composer + AI polish (draft only; sending is not wired yet) ─────────
 const reply = ref('')
@@ -290,6 +318,36 @@ async function polish(): Promise<void> {
 
         <!-- Conversation thread -->
         <section class="lg:order-1">
+          <!-- AI summary -->
+          <div class="mb-6">
+            <div class="mb-2 flex items-center justify-between gap-3">
+              <h2 class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-muted">
+                <ScrollText :size="14" :stroke-width="1.75" />
+                Summary
+              </h2>
+              <button
+                type="button"
+                :disabled="summarizing"
+                class="inline-flex items-center gap-1.5 rounded border border-line bg-card px-3 py-1.5 text-sm font-medium text-ink transition-colors duration-150 hover:bg-app hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
+                @click="summarize"
+              >
+                <Loader2 v-if="summarizing" class="animate-spin" :size="15" />
+                <Sparkles v-else :size="15" :stroke-width="1.75" />
+                {{ summary ? 'Regenerate' : 'Summarize' }}
+              </button>
+            </div>
+            <div
+              v-if="summary"
+              class="whitespace-pre-wrap break-words rounded-lg border border-accent/20 bg-accent/5 p-4 text-sm text-ink"
+            >
+              {{ summary }}
+            </div>
+            <p v-else class="text-xs text-muted">
+              {{ summaryNote ?? 'Generate a quick AI summary of this conversation.' }}
+            </p>
+            <p v-if="summary && summaryNote" class="mt-2 text-xs text-muted">{{ summaryNote }}</p>
+          </div>
+
           <ol class="space-y-4">
             <li
               v-for="message in messages"

@@ -151,6 +151,7 @@ Each phase ends in something demonstrable. Build the manual helpdesk first, laye
 ### Phase 7 — Admin, reporting & hardening
 - Add **Filament** (in `apps/api`) for agent + KB management; add **spatie/laravel-permission** if the simple role column has outgrown itself.
 - Dashboards: first-response time (primary metric), auto/draft/escalate mix, edit-rate, LLM cost.
+  - ✅ Early slice landed: a ticket-volume dashboard in the SPA (`/dashboard`) — active/resolved/priority(open-refund)/total counts + a tickets-by-category bar chart, all scoped by category/status/assigned-agent/date-range filters. API `GET /api/dashboard` (accepts those filters). The AI-quality metrics above are still to come.
 - Audit log of AI decisions; structured logging + alerting.
 - **Exit:** admin can answer "fast, and correct?".
 

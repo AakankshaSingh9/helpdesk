@@ -206,15 +206,32 @@ Feature tests with `.eml` fixtures live in `apps/api/tests/Feature/InboundEmailT
 
 ---
 
+## 5b-i. Dashboard
+
+The home page's **Dashboard** button (or `/dashboard`) opens a ticket-overview
+screen: headline counts for **active** (open), **resolved**, **priority** (open
+refund requests), and **total** tickets, plus a **tickets-by-category** bar
+chart. Everything recomputes against four filters — **date range**, **category**,
+**status**, and **assigned agent** — so the same view answers focused questions
+like "open refunds assigned to nobody in the last 7 days".
+
+It's a plain read of the ticket table (no AI): the SPA calls
+`GET /api/dashboard`, which accepts `range` (`7`/`30`/`90`/`all`), `category`,
+`status`, and `assigned_to` (an agent id or `unassigned`) and returns the counts
+and per-category totals. Available to both roles, like the other ticket reads.
+
+---
+
 ## 5c. AI features (OpenAI `gpt-5-nano`)
 
-Three AI features are built on OpenAI, called over REST **from PHP** (no JS SDK;
-the key never leaves the server). All three sit behind the `AI_ENABLED` switch and
+Four AI features are built on OpenAI, called over REST **from PHP** (no JS SDK;
+the key never leaves the server). All sit behind the `AI_ENABLED` switch and
 **degrade to the manual helpdesk** when AI is off or a call fails:
 
 | Feature | Where | Behaviour when AI is off |
 |---|---|---|
 | **Reply polish** | "Polish" button in the ticket reply composer | Returns the draft unchanged |
+| **Ticket summary** | "Summarize" button above the ticket conversation | No summary; the full thread is still shown |
 | **Auto-classification** | Queued job on new-ticket arrival | Ticket stays uncategorised |
 | **KB auto-resolve** | Queued job on new-ticket arrival | Ticket stays open for an agent |
 
