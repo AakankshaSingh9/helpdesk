@@ -29,4 +29,17 @@ return [
 
     'inbound_secret' => env('MAIL_INBOUND_SECRET', ''),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Agent signature
+    |--------------------------------------------------------------------------
+    |
+    | Name that outbound replies are signed with (auto-resolve replies and the
+    | AI-polished agent drafts). Purely presentational — the From address is
+    | still `support_address` above.
+    |
+    */
+
+    'agent_name' => env('HELPDESK_AGENT_NAME', 'Aakanksha'),
+
 ];

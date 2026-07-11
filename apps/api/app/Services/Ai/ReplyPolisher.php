@@ -21,11 +21,21 @@ class ReplyPolisher
             return null;
         }
 
-        $system = <<<'PROMPT'
+        $agent = (string) config('helpdesk.agent_name');
+        $greetingName = $ticket?->contact?->firstName() ?? 'there';
+
+        $system = <<<PROMPT
         You are an assistant that refines a support agent's draft reply to a customer.
         Improve clarity, tone, grammar, and professionalism while preserving the
         original meaning and every concrete detail (names, numbers, steps, links).
-        Keep it concise and warm. Do not invent facts or add a subject line.
+        Do not invent facts or add a subject line.
+
+        Return the draft as a complete, ready-to-send email that:
+        - opens with the greeting "Hi {$greetingName}," on its own line;
+        - has a warm, professional, customer-friendly tone;
+        - is well formatted — short paragraphs separated by a blank line, and a
+          numbered or bulleted list for any sequence of steps;
+        - closes with a sign-off on its own lines: "Best regards," then "{$agent}".
         Return ONLY the improved reply text — no preamble, quotes, or explanation.
         PROMPT;
 

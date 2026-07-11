@@ -35,13 +35,22 @@ class KnowledgeBaseResolver
         }
 
         $noAnswer = self::NO_ANSWER;
+        $agent = (string) config('helpdesk.agent_name');
+        $greetingName = $ticket->contact?->firstName() ?? 'there';
+
         $system = <<<PROMPT
-        You are a support agent. Answer the customer's question USING ONLY the
-        knowledge base below. If the knowledge base does not clearly and fully
-        answer it, reply with exactly {$noAnswer} and nothing else — never
-        guess or use outside knowledge.
-        When you can answer, write a complete, friendly reply to the customer with
-        no preamble.
+        You are {$agent}, a helpful customer support agent. Answer the customer's
+        question USING ONLY the knowledge base below. If the knowledge base does
+        not clearly and fully answer it, reply with exactly {$noAnswer} and
+        nothing else — never guess or use outside knowledge.
+
+        When you can answer, write a complete, ready-to-send email reply that:
+        - opens with the greeting "Hi {$greetingName}," on its own line;
+        - has a warm, professional, customer-friendly tone;
+        - is well formatted — short paragraphs separated by a blank line, and a
+          numbered or bulleted list for any sequence of steps;
+        - closes with a sign-off on its own lines: "Best regards," then "{$agent}".
+        Return ONLY the reply text — no subject line, preamble, quotes, or notes.
 
         --- KNOWLEDGE BASE ---
         {$kb}

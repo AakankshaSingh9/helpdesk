@@ -57,6 +57,7 @@ Values shown below are **names + purpose only**, not the secrets themselves.
 | `SANCTUM_STATEFUL_DOMAINS` | SPA origins allowed to authenticate via cookies. |
 | `MAIL_*` | Outbound mail (currently `log` driver — no real SMTP yet). |
 | `HELPDESK_SUPPORT_ADDRESS` | The support mailbox. Loop guard for inbound email; From address for future replies. |
+| `HELPDESK_AGENT_NAME` | Name outbound replies are signed with (auto-resolve replies + AI-polished drafts). Defaults to `Aakanksha`. |
 | `MAIL_INBOUND_SECRET` | Shared secret for the `POST /api/mail/inbound` webhook (**secret** — blank in `.env.example`; blank disables the endpoint). |
 | `AWS_*` | Object storage (unused / blank until file storage is needed). |
 
