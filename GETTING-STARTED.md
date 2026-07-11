@@ -15,7 +15,7 @@ helpdesk/
 ├── apps/
 │   ├── api/   → Laravel 12 (PHP) — the backend REST API + database access
 │   └── web/   → Vue 3 + TypeScript — the frontend the agents use in the browser
-├── docker-compose.yml   → defines the 4 containers that make up the dev environment
+├── docker-compose.yml   → defines the 5 containers that make up the dev environment
 ├── package.json         → handy shortcut commands (pnpm/npm run …)
 └── GETTING-STARTED.md   → you are here
 ```
@@ -32,16 +32,17 @@ Running this project *without* Docker would mean installing PHP 8.3, Composer, P
 
 **Docker packages each of those into a container** — a small, isolated box with exactly the right software inside. The only thing you need installed on your machine is Docker itself. Everyone who works on the project gets the identical environment.
 
-We use **4 containers**, defined in `docker-compose.yml`:
+We use **5 containers**, defined in `docker-compose.yml`:
 
 | Container | What it is | Why it's there |
 |---|---|---|
 | `db` | PostgreSQL **with pgvector** | Stores tickets, users, and (later) the AI knowledge-base vectors. We use the `pgvector/pgvector` image so the vector search extension is already installed. |
 | `redis` | Redis | A fast in-memory store. Used later for background job queues. |
 | `api` | PHP 8.3 + Laravel | Runs the backend on port **8000**. |
+| `worker` | PHP 8.3 + Laravel | Runs `php artisan queue:work` — processes the background jobs the API dispatches (ticket classification, KB auto-resolve) so intake stays non-blocking. Shares the `api` image and code. |
 | `web` | Node 22 + Vite | Runs the Vue dev server on port **5173**. |
 
-`docker-compose.yml` is the single file that describes all four and how they connect. `docker compose up` reads it and starts everything.
+`docker-compose.yml` is the single file that describes all five and how they connect. `docker compose up` reads it and starts everything.
 
 ---
 
@@ -73,7 +74,7 @@ docker run --rm -u 1000:1000 -v "$(pwd)/apps:/app" -w /app \
 We added by hand:
 - **`apps/api/Dockerfile`** — recipe to build the PHP container (installs the `pdo_pgsql` and `redis` PHP extensions Laravel needs to talk to Postgres/Redis).
 - **`apps/web/Dockerfile`** — recipe to build the Node container.
-- **`docker-compose.yml`** — wires the 4 containers together.
+- **`docker-compose.yml`** — wires the 5 containers together.
 - **`apps/api/.env`** — pointed Laravel at the `db` container (Postgres) instead of the default SQLite, and at the `redis` container. Also set the Sanctum "stateful domains" so the SPA is allowed to log in.
 - **`apps/web/.env`** — told the SPA where the API lives (`VITE_API_URL=http://localhost:8000`).
 - A small **health-check page** in the SPA that calls the API, so we can visually confirm the two apps are talking.
@@ -115,7 +116,7 @@ or, using the shortcut in `package.json`:
 ```
 npm run up
 ```
-This starts all 4 containers. The first time, the `api` and `web` containers will install their dependencies (Composer packages / npm packages) — so the first boot is slower. Leave the terminal open; logs from all services stream here.
+This starts all 5 containers. The first time, the `api` and `web` containers will install their dependencies (Composer packages / npm packages) — so the first boot is slower. The `worker` container shares the `api` code and waits for those Composer packages before it starts working the queue. Leave the terminal open; logs from all services stream here.
 
 Once it's up:
 - **API** → http://localhost:8000
@@ -169,6 +170,76 @@ Right here on your machine, in `apps/api` and `apps/web`, with your normal edito
 
 ---
 
+## 5b. Email → ticket intake
+
+Inbound support email becomes a ticket through a **provider-agnostic webhook**:
+a mail provider (or, for local testing, `curl`) POSTs a raw RFC822 message to
+`POST /api/mail/inbound` and the API opens or threads a ticket. The parsing +
+threading logic lives in `app/Services/Mail/InboundEmailService.php`, so a future
+IMAP poller can reuse it without change.
+
+The endpoint is unauthenticated (there's no user session behind an SMTP relay) but
+requires a shared secret in the `X-Inbound-Secret` header, matched against
+`MAIL_INBOUND_SECRET` in `apps/api/.env`. A **blank** secret disables the endpoint.
+
+**Try it locally** (with `MAIL_INBOUND_SECRET=local-inbound-secret`):
+
+```bash
+curl -X POST http://localhost:8000/api/mail/inbound \
+  -H "X-Inbound-Secret: local-inbound-secret" \
+  -H "Content-Type: message/rfc822" \
+  --data-binary @apps/api/tests/Fixtures/emails/new.eml
+# → 202 {"outcome":"created","reference":"TKT-XXXXXX"}
+```
+
+Log in to the SPA and open **Tickets** (or the "View tickets" button on the home
+page) to see it. What the pipeline handles:
+
+- **Threading** — replies attach to their ticket via the `In-Reply-To`/`References`
+  headers or a `[TKT-XXXXXX]` token in the subject.
+- **Deduplication** — a repeated `Message-ID` is a no-op (idempotent redelivery).
+- **Loop/auto-responder guard** — mail with `Auto-Submitted`/`Precedence: bulk`
+  headers, or sent from our own `HELPDESK_SUPPORT_ADDRESS`, is dropped.
+
+Feature tests with `.eml` fixtures live in `apps/api/tests/Feature/InboundEmailTest.php`
+(`docker compose exec api php artisan test`).
+
+---
+
+## 5c. AI features (OpenAI `gpt-5-nano`)
+
+Three AI features are built on OpenAI, called over REST **from PHP** (no JS SDK;
+the key never leaves the server). All three sit behind the `AI_ENABLED` switch and
+**degrade to the manual helpdesk** when AI is off or a call fails:
+
+| Feature | Where | Behaviour when AI is off |
+|---|---|---|
+| **Reply polish** | "Polish" button in the ticket reply composer | Returns the draft unchanged |
+| **Auto-classification** | Queued job on new-ticket arrival | Ticket stays uncategorised |
+| **KB auto-resolve** | Queued job on new-ticket arrival | Ticket stays open for an agent |
+
+**Enable it locally:**
+
+1. Set in `apps/api/.env`: `AI_ENABLED=true` and `OPENAI_API_KEY=sk-…`
+   (`OPENAI_MODEL` defaults to `gpt-5-nano`). Restart the `api` container so it
+   re-reads `.env`.
+2. Classification and auto-resolve run on the **queue**, so a worker must be
+   running to process them:
+   ```
+   docker compose exec api php artisan queue:work
+   ```
+   (Intake stays fast because these run off the request — the webhook returns
+   `202` immediately and the jobs are picked up by the worker.)
+
+**Knowledge base:** auto-resolve answers strictly from a single file,
+`apps/api/storage/app/knowledge-base.md` (path configurable via `AI_KB_PATH`).
+Edit that file to change what can be auto-answered; if the KB can't ground an
+answer, the ticket is left open (never guessed). A resolved ticket gets the AI
+reply recorded as an outbound message — actual email delivery is deferred Phase 2
+outbound work.
+
+---
+
 ## 6. Troubleshooting
 
 - **SPA shows "❌ Could not reach API"** → the `api` container may still be installing dependencies on first boot. Wait, refresh. Check `docker compose logs api`.
@@ -180,6 +251,11 @@ Right here on your machine, in `apps/api` and `apps/web`, with your normal edito
 
 ## 7. What's next
 
-We're at the end of **Phase 0** (foundation) from [project-scope.md](project-scope.md): the monorepo runs, the two apps talk. Next up is **Phase 1 — the minimal ticket domain** (tickets, messages, and the screens to manage them by hand), still with no AI or email. The AI features come later and layer on top.
+**Phase 0** (foundation) is done — the monorepo runs and the two apps talk. The
+**ticket domain** (Phase 1: `contacts`/`tickets`/`messages`) and **inbound email
+intake** (Phase 2, webhook flavour — see [§5b](#5b-email--ticket-intake)) have now
+landed: an email opens or threads onto a ticket, viewable in the SPA. Still ahead:
+outbound replies and IMAP polling (rest of Phase 2), then the AI features
+(classification, RAG, drafting) that layer on top from Phase 3 onward.
 
 > **AI env placeholders are already in `apps/api/.env`** (and `.env.example`) — `AI_ENABLED`, `AI_PII_REDACTION`, `ANTHROPIC_*`, `VOYAGE_*` — set ahead of Phases 3–5. They do nothing yet: `AI_ENABLED=false` and the API keys are blank. Fill in the real keys locally when the AI phase starts; never commit them. See the env-variable reference in [CLAUDE.md](CLAUDE.md).

@@ -9,6 +9,14 @@
     "logs": "docker compose logs -f",
     "api": "docker compose exec api sh",
     "web": "docker compose exec web sh",
-    "db": "docker compose exec db psql -U helpdesk -d helpdesk"
+    "db": "docker compose exec db psql -U helpdesk -d helpdesk",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
+    "e2e:down": "bash scripts/e2e/down.sh"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^24.13.2"
   }
 }

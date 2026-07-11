@@ -16,7 +16,7 @@ Backing services: PostgreSQL + pgvector (`db`), Redis (`redis`).
 ## Running it
 
 ```
-docker compose up -d      # start all 4 containers (api, web, db, redis)
+docker compose up -d      # start all 5 containers (api, worker, web, db, redis)
 docker compose ps         # see what's running
 docker compose down       # stop
 ```
@@ -56,6 +56,8 @@ Values shown below are **names + purpose only**, not the secrets themselves.
 | `REDIS_*` | Redis connection for queues/cache. |
 | `SANCTUM_STATEFUL_DOMAINS` | SPA origins allowed to authenticate via cookies. |
 | `MAIL_*` | Outbound mail (currently `log` driver — no real SMTP yet). |
+| `HELPDESK_SUPPORT_ADDRESS` | The support mailbox. Loop guard for inbound email; From address for future replies. |
+| `MAIL_INBOUND_SECRET` | Shared secret for the `POST /api/mail/inbound` webhook (**secret** — blank in `.env.example`; blank disables the endpoint). |
 | `AWS_*` | Object storage (unused / blank until file storage is needed). |
 
 ### AI / RAG layer — Phases 3–5 (placeholders, not yet in use)
@@ -75,6 +77,21 @@ when implementing.
 | `ANTHROPIC_FALLBACK_MODEL` | Escalation model when quality is insufficient (`claude-opus-4-8`). |
 | `VOYAGE_API_KEY` | Voyage AI key for embeddings (**secret** — blank in `.env.example`). |
 | `VOYAGE_EMBED_MODEL` | Embedding model for the pgvector KB (`voyage-3`). |
+| `OPENAI_API_KEY` | Key for the OpenAI-compatible LLM used by reply-polish / classification / KB auto-resolve (**secret** — blank in `.env.example`). For the default Groq provider this is a `gsk_…` key from https://console.groq.com/keys. |
+| `OPENAI_BASE_URL` | Base URL of the OpenAI-compatible endpoint. Default `https://api.groq.com/openai/v1` (Groq). Point at any compatible provider to switch. |
+| `OPENAI_MODEL` | Model for those features (`llama-3.3-70b-versatile` on Groq). |
+| `AI_KB_PATH` | Path to the plain-text/Markdown knowledge-base file used to auto-resolve tickets. |
+
+> **Note — non-Claude deviation.** Reply-polish, ticket classification, and KB
+> auto-resolve were built against an **OpenAI-compatible Chat Completions
+> endpoint** (called over REST from PHP — key stays server-side, no JS SDK) at
+> the product owner's explicit request, deviating from the Claude-only
+> convention above. The provider is configurable via `OPENAI_BASE_URL`; the
+> current default is **Groq's free tier** running `llama-3.3-70b-versatile`
+> (the `OPENAI_*` env/config names are kept for backwards compatibility). The
+> Claude/Voyage keys remain for the planned RAG pipeline. All three features
+> stay behind `AI_ENABLED` and degrade to the manual helpdesk when AI is off or
+> a call fails.
 
 ### `apps/web/.env`
 

@@ -44,6 +44,35 @@ services:
       redis:
         condition: service_started
 
+  # Queue worker — processes the non-blocking jobs that intake dispatches
+  # (ticket classification, KB auto-resolve). Without this, queued jobs pile up
+  # in the `jobs` table and tickets are never classified. Shares the api image
+  # and code mount; runs a separate process so intake stays non-blocking.
+  worker:
+    build: ./apps/api
+    user: "1000:1000"
+    volumes:
+      - ./apps/api:/var/www/api
+    environment:
+      HOME: /tmp
+    # Restart until the api container finishes composer install + migrate (it
+    # creates the `jobs` table); queue:work exits on a missing table and we
+    # come straight back up. The jobs themselves already fail-soft.
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      api:
+        condition: service_started
+    # Wait for shared deps to be installed by the api container, then work the
+    # queue. --tries retries transient job failures; --max-time recycles the
+    # worker hourly so code changes are picked up in dev.
+    command: >
+      sh -c "until [ -f vendor/autoload.php ]; do echo 'waiting for composer deps...'; sleep 2; done &&
+             php artisan queue:work --tries=3 --sleep=3 --timeout=60 --max-time=3600"
+
   # Vue 3 + TypeScript SPA (Vite dev server).
   web:
     build: ./apps/web

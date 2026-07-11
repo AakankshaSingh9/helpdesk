@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import { Inbox, Sparkles, BookOpen, Users } from 'lucide-vue-next'
+import { Inbox, Sparkles, BookOpen, Users, Ticket } from 'lucide-vue-next'
 import { auth } from '../stores/auth'
 
 const firstName = () => auth.state.user?.name?.split(/\s+/)[0] ?? 'there'
@@ -31,14 +31,24 @@ const cards = [
       <h1 class="text-3xl tracking-tight text-ink">Welcome back, {{ firstName() }} 👋</h1>
       <p class="mt-2 text-muted">You're signed in to the AI Helpdesk.</p>
 
-      <RouterLink
-        v-if="auth.isAdmin"
-        to="/users"
-        class="mt-4 inline-flex items-center gap-1.5 rounded border border-line bg-card px-3 py-1.5 text-sm font-medium text-ink transition-colors duration-150 hover:bg-app hover:text-accent"
-      >
-        <Users :size="18" :stroke-width="1.5" />
-        <span>Manage users</span>
-      </RouterLink>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <RouterLink
+          to="/tickets"
+          class="inline-flex items-center gap-1.5 rounded border border-line bg-card px-3 py-1.5 text-sm font-medium text-ink transition-colors duration-150 hover:bg-app hover:text-accent"
+        >
+          <Ticket :size="18" :stroke-width="1.5" />
+          <span>View tickets</span>
+        </RouterLink>
+
+        <RouterLink
+          v-if="auth.isAdmin"
+          to="/users"
+          class="inline-flex items-center gap-1.5 rounded border border-line bg-card px-3 py-1.5 text-sm font-medium text-ink transition-colors duration-150 hover:bg-app hover:text-accent"
+        >
+          <Users :size="18" :stroke-width="1.5" />
+          <span>Manage users</span>
+        </RouterLink>
+      </div>
     </header>
 
     <section class="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">

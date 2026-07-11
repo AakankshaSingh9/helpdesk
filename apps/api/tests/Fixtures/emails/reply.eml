@@ -1,0 +1,10 @@
+From: Jane Customer <jane@example.com>
+To: support@helpdesk.test
+Subject: Re: Cannot log in to my account
+Message-ID: <fixture-reply-0002@example.com>
+In-Reply-To: <fixture-new-0001@example.com>
+References: <fixture-new-0001@example.com>
+Date: Sun, 05 Jul 2026 10:30:00 +0000
+Content-Type: text/plain; charset=UTF-8
+
+Any update on this? Still stuck.

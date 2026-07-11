@@ -28,6 +28,10 @@
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
+        <!-- AI off by default in tests so the suite never depends on a live
+             external API or the developer's local .env toggle. Tests that
+             exercise the AI pipeline enable it explicitly (see AiPipelineTest). -->
+        <env name="AI_ENABLED" value="false"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>

@@ -1,0 +1,60 @@
+# Playwright E2E test stack — overlay on top of docker-compose.yml.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.test.yml up api-test web-test
+#
+# It runs a SECOND copy of the API and SPA, isolated from the dev stack:
+#   - api-test  → http://localhost:8001, talks to a SEPARATE database (helpdesk_test)
+#   - web-test  → http://localhost:5174, points the SPA at api-test
+# The `db` and `redis` containers are shared with the dev stack; only the
+# database *name* differs (helpdesk vs helpdesk_test), so dev data is never
+# touched. The test database is created by scripts/e2e/up.sh before this runs.
+#
+# Playwright orchestrates all of this via `webServer` in playwright.config.ts —
+# you normally run `npm run test:e2e`, not this file directly.
+
+services:
+  # API pointed at the isolated test database. Env vars set here are real OS
+  # environment variables, which Laravel's dotenv loader will NOT override — so
+  # they win over apps/api/.env while secrets (APP_KEY, DB_PASSWORD) still come
+  # from that file. On boot it rebuilds the schema and seeds fresh fixtures.
+  api-test:
+    build: ./apps/api
+    user: "1000:1000"
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./apps/api:/var/www/api
+    environment:
+      HOME: /tmp
+      APP_ENV: testing
+      APP_URL: http://localhost:8001
+      APP_DEBUG: "true"
+      DB_DATABASE: helpdesk_test
+      FRONTEND_URL: http://localhost:5174
+      SANCTUM_STATEFUL_DOMAINS: localhost:5174,127.0.0.1:5174
+    # migrate:fresh --seed gives every test run a clean, known database. serve
+    # only starts once that finishes, so port 8001 answering == DB ready.
+    command: >
+      sh -c "composer install --no-interaction &&
+             php artisan migrate:fresh --seed --force &&
+             php artisan serve --host=0.0.0.0 --port=8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # Second Vite dev server, built to call api-test. VITE_API_URL is provided as
+  # a process env var, which Vite prioritises over the apps/web/.env file.
+  web-test:
+    build: ./apps/web
+    user: "1000:1000"
+    ports:
+      - "5174:5173"
+    volumes:
+      - ./apps/web:/app
+    environment:
+      HOME: /tmp
+      VITE_API_URL: http://localhost:8001
+    depends_on:
+      - api-test

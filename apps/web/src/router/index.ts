@@ -3,6 +3,8 @@ import { auth } from '../stores/auth'
 import LoginView from '../views/LoginView.vue'
 import HomeView from '../views/HomeView.vue'
 import UsersView from '../views/UsersView.vue'
+import TicketsView from '../views/TicketsView.vue'
+import TicketView from '../views/TicketView.vue'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/home' },
@@ -13,6 +15,14 @@ const routes: RouteRecordRaw[] = [
     name: 'users',
     component: UsersView,
     meta: { requiresAdmin: true },
+  },
+  { path: '/tickets', name: 'tickets', component: TicketsView, meta: { requiresAuth: true } },
+  {
+    path: '/tickets/:id',
+    name: 'ticket',
+    component: TicketView,
+    meta: { requiresAuth: true },
+    props: true,
   },
   { path: '/:pathMatch(.*)*', redirect: '/home' },
 ]

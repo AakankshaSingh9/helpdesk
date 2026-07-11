@@ -14,6 +14,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('sessions', function (Blueprint $table) {
+            // Drop the index before the column. Postgres cascades this for us,
+            // but SQLite (the test database) leaves the index dangling and errors
+            // unless it's removed explicitly first.
+            $table->dropIndex(['user_id']);
             $table->dropColumn('user_id');
         });
 
@@ -25,6 +29,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('sessions', function (Blueprint $table) {
+            $table->dropIndex(['user_id']);
             $table->dropColumn('user_id');
         });
 

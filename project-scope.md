@@ -99,20 +99,24 @@ Each phase ends in something demonstrable. Build the manual helpdesk first, laye
 - Basic CI: Pint, PHPStan/Larastan, `vue-tsc`, tests.
 - **Exit:** admin logs in through the SPA against the API.
 
-### Phase 1 — Minimal ticket domain (no AI, no email)
-- Migrations/models/factories: `tickets`, `messages`, `contacts`.
+### Phase 1 — Minimal ticket domain (no AI, no email) — *partially landed*
+- ✅ Migrations/models/factories: `tickets`, `messages`, `contacts` (+ status/category enums).
+- ✅ Read-only ticket list (server-side sortable columns via TanStack Table) + conversation view in the SPA; API `GET /api/tickets` (accepts `sort`/`direction`), `/api/tickets/{id}`.
+- ⬜ Still to do: reply-from-UI, manual assign-to-agent + authorization (admin all / agent assigned), lifecycle tests.
 - Statuses (open/resolved/closed) + categories (general/technical/refund) as enums.
 - Ticket CRUD + reply thread: API endpoints (`apps/api`) + SPA screens (`apps/web`).
 - Manual "assign to agent" + authorization (admin sees all, agent sees assigned).
 - Seeders + feature tests for the lifecycle.
 - **Exit:** an agent works a ticket end-to-end by hand.
 
-### Phase 2 — Email in/out
-- Inbound via `webklex/php-imap` on Laravel Scheduler (~1 min); introduce queues (default driver first).
-- Parse + thread (In-Reply-To/References + subject token); dedupe by Message-ID.
-- Loop/auto-responder prevention; basic spam/empty handling (attachments deferred).
-- Outbound via Laravel Mail over Workspace SMTP, correctly threaded.
-- Tests with `.eml` fixtures.
+### Phase 2 — Email in/out — *inbound landed (webhook)*
+- ✅ Inbound via a **provider-agnostic webhook** (`POST /api/mail/inbound`, shared-secret
+  guarded) parsing raw RFC822 with `zbateson/mail-mime-parser`. Logic sits behind
+  `InboundEmailService` so the IMAP poller below can reuse it.
+- ✅ Parse + thread (In-Reply-To/References + subject token); dedupe by Message-ID.
+- ✅ Loop/auto-responder prevention; empty-body handling. Tests with `.eml` fixtures.
+- ⬜ Still to do: IMAP polling via `webklex/php-imap` on the Scheduler (share the service);
+  outbound via Laravel Mail over Workspace SMTP, correctly threaded; attachments/spam.
 - **Exit:** email creates a ticket; agent reply lands in-thread. *(Usable manual helpdesk — shippable.)*
 
 ### Phase 3 — AI classification & routing

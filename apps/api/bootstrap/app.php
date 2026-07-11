@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Let the SPA authenticate `api` routes with its session cookie
         // (Sanctum SPA auth, paired with Fortify's session login).
         $middleware->statefulApi();
+
+        // `admin` → restrict a route to users with the admin role.
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
