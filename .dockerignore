@@ -1,0 +1,13 @@
+# Keep the build context small and secret-free. Railway injects env at runtime,
+# so .env files must never enter the image.
+**/.env
+**/.env.*
+**/node_modules
+**/vendor
+**/dist
+.git
+**/.DS_Store
+apps/api/storage/logs/*
+apps/api/storage/framework/cache/data/*
+apps/api/storage/framework/sessions/*
+apps/api/storage/framework/views/*

@@ -7,13 +7,18 @@
 //   3. every request uses credentials: 'include' so the session cookie rides along
 
 // Base URL of the Laravel API. Configured via VITE_API_URL in apps/web/.env
-// (see .env.example) — no hardcoded fallback so a missing value fails loudly.
-const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '')
-if (!API_URL) {
+// (see .env.example) — a *missing* value fails loudly so dev can't silently
+// point at the wrong host. An explicit *empty* value means "same origin"
+// (relative URLs like `/api/user`), used in production when the SPA and API
+// share a domain — e.g. Cloudflare Pages proxying /api to the API host.
+const rawApiUrl = import.meta.env.VITE_API_URL as string | undefined
+if (rawApiUrl === undefined) {
   throw new Error(
-    'VITE_API_URL is not set. Define it in apps/web/.env, e.g. VITE_API_URL=http://localhost:8000',
+    'VITE_API_URL is not set. Define it in apps/web/.env, e.g. VITE_API_URL=http://localhost:8000 ' +
+      '(set it to an empty string for a same-origin production deploy).',
   )
 }
+const API_URL = rawApiUrl.replace(/\/$/, '')
 
 /** Read a cookie value by name (returns the URL-decoded value, or null). */
 function getCookie(name: string): string | null {

@@ -1,0 +1,14 @@
+# Keep the build context small and never bake local state/secrets into the image.
+vendor/
+node_modules/
+.env
+.env.*
+!.env.production.example
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+public/build/
+public/hot
+.phpunit.result.cache
+tests/

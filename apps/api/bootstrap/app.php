@@ -12,6 +12,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind Railway's TLS-terminating edge proxy, so trust its forwarded
+        // headers — otherwise Laravel sees plain HTTP and mis-sets secure cookies
+        // / generates http:// URLs. Safe here because the container is only ever
+        // reached through that proxy.
+        $middleware->trustProxies(at: '*');
+
         // Let the SPA authenticate `api` routes with its session cookie
         // (Sanctum SPA auth, paired with Fortify's session login).
         $middleware->statefulApi();

@@ -1,0 +1,43 @@
+# Production image for the Laravel API — demo-grade, free-tier friendly.
+#
+# How it differs from apps/api/Dockerfile (the dev image):
+#   - Dependencies are baked into the image; no bind mount and no boot-time
+#     `composer install`. The host (e.g. Render) just runs the container.
+#   - Runs as production: APP_ENV=production, APP_DEBUG off, opcache on.
+#   - No queue worker and no Redis. Production uses QUEUE_CONNECTION=sync plus
+#     the database cache/session drivers, so this single web process is the
+#     whole backend. The AI classify/auto-resolve jobs run inline on intake
+#     (a little slower, still fail-soft). See DEPLOY.md.
+#
+# It is served with `php artisan serve`, which is fine for a low-traffic demo.
+# For real traffic, swap this for php-fpm + nginx.
+FROM php:8.3-cli
+
+# System libs + the PHP extensions the app needs (Postgres, bcmath, zip).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpq-dev libzip-dev libonig-dev unzip git \
+    && docker-php-ext-install pdo pdo_pgsql bcmath zip opcache \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-prod.ini
+
+# Composer (from the official image).
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+ENV COMPOSER_HOME=/tmp/composer
+
+WORKDIR /var/www/api
+
+# Install prod PHP deps first for better layer caching, then copy the app.
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --no-interaction --prefer-dist
+
+COPY . .
+RUN composer dump-autoload --optimize --no-dev \
+    && chmod -R ug+rw storage bootstrap/cache
+
+# Render (and most PaaS) inject the listen port via $PORT.
+# On boot: cache config, apply the schema, ensure the admin login exists, serve.
+# NOTE: intentionally no `route:cache` — routes/{api,web}.php use closures,
+# which Laravel cannot serialize into a cached route file.
+EXPOSE 8000
+CMD ["sh", "-c", "php artisan config:cache && php artisan migrate --force && php artisan db:seed --class='Database\\Seeders\\AdminUserSeeder' --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
