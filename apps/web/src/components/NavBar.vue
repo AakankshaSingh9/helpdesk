@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { LifeBuoy, LogOut } from 'lucide-vue-next'
+import { LifeBuoy, LogOut, Moon, Sun } from 'lucide-vue-next'
 import { auth } from '../stores/auth'
+import { useTheme } from '../composables/useTheme'
 
 const router = useRouter()
+
+const { isDark, toggle } = useTheme()
 
 async function signOut() {
   await auth.logout()
@@ -40,6 +43,16 @@ const initials = computed(() => {
     </div>
 
     <div class="flex items-center gap-3.5" v-if="auth.state.user">
+      <button
+        type="button"
+        class="inline-flex cursor-pointer items-center rounded border border-line bg-card p-1.5 text-ink transition-colors duration-150 hover:bg-app hover:text-accent"
+        :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+        :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+        @click="toggle"
+      >
+        <Sun v-if="isDark" :size="18" :stroke-width="1.5" />
+        <Moon v-else :size="18" :stroke-width="1.5" />
+      </button>
       <div class="flex items-center gap-2">
         <span
           class="grid h-8 w-8 place-items-center rounded-full bg-accent text-xs font-semibold text-white"

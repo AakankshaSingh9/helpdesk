@@ -23,7 +23,7 @@
      text-muted-foreground, border-input, ring-ring …). We map them onto the
      Calm Horizon palette above so shadcn components inherit the app's look —
      teal → primary, urgent red → destructive, line → border/input. Overridden
-     for dark mode in the media query below. */
+     for dark mode in the [data-theme='dark'] block below. */
   --color-background: #f7f8fa;
   --color-foreground: #1a2233;
   --color-card-foreground: #1a2233;
@@ -46,34 +46,37 @@
 
 /* Dark mode: remap the semantic surface tokens so every bg-app / bg-card /
    border-line / text-ink / text-muted adapts automatically. New UI inherits
-   dark support for free — no per-element dark: variants required. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-app: #0f1419;
-    --color-card: #1b2129;
-    --color-line: #2a3340;
-    --color-ink: #e5e8ee;
-    --color-muted: #9aa3b2;
-    --color-accent: #2dd4bf; /* brighter teal for contrast on dark surfaces */
-    color-scheme: dark;
+   dark support for free — no per-element dark: variants required.
 
-    /* shadcn tokens, dark variants (see mapping note in @theme) */
-    --color-background: #0f1419;
-    --color-foreground: #e5e8ee;
-    --color-card-foreground: #e5e8ee;
-    --color-popover: #1b2129;
-    --color-popover-foreground: #e5e8ee;
-    --color-primary: #2dd4bf;
-    --color-primary-foreground: #0f1419;
-    --color-secondary: #232b36;
-    --color-secondary-foreground: #e5e8ee;
-    --color-muted-foreground: #9aa3b2;
-    --color-accent-foreground: #0f1419;
-    --color-destructive: #ef4444;
-    --color-border: #2a3340;
-    --color-input: #313b49;
-    --color-ring: #2dd4bf;
-  }
+   Driven by `data-theme="dark"` on <html>, set by the theme toggle (see
+   useTheme.ts). The "system" preference is resolved to a concrete light/dark
+   value in JS, so this attribute is the single source of truth — an inline
+   script in index.html stamps it before first paint to avoid a flash. */
+:root[data-theme="dark"] {
+  --color-app: #0f1419;
+  --color-card: #1b2129;
+  --color-line: #2a3340;
+  --color-ink: #e5e8ee;
+  --color-muted: #9aa3b2;
+  --color-accent: #2dd4bf; /* brighter teal for contrast on dark surfaces */
+  color-scheme: dark;
+
+  /* shadcn tokens, dark variants (see mapping note in @theme) */
+  --color-background: #0f1419;
+  --color-foreground: #e5e8ee;
+  --color-card-foreground: #e5e8ee;
+  --color-popover: #1b2129;
+  --color-popover-foreground: #e5e8ee;
+  --color-primary: #2dd4bf;
+  --color-primary-foreground: #0f1419;
+  --color-secondary: #232b36;
+  --color-secondary-foreground: #e5e8ee;
+  --color-muted-foreground: #9aa3b2;
+  --color-accent-foreground: #0f1419;
+  --color-destructive: #ef4444;
+  --color-border: #2a3340;
+  --color-input: #313b49;
+  --color-ring: #2dd4bf;
 }
 
 @layer base {

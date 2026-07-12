@@ -11,6 +11,21 @@
       rel="stylesheet"
     />
     <title>AI Helpdesk</title>
+    <script>
+      // Stamp the resolved theme onto <html> before first paint so there's no
+      // flash of the wrong theme. Preference: 'dark' | 'light' | absent (system).
+      // Kept in sync at runtime by useTheme.ts.
+      (function () {
+        try {
+          var pref = localStorage.getItem('theme')
+          var dark =
+            pref === 'dark' ||
+            (pref !== 'light' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>
