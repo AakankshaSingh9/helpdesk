@@ -168,10 +168,11 @@ async function summarize(): Promise<void> {
   }
 }
 
-// ── Reply composer + AI polish (draft only; sending is not wired yet) ─────────
+// ── Reply composer + AI polish ────────────────────────────────────────────────
 const reply = ref('')
 const polishing = ref(false)
 const polishNote = ref<string | null>(null)
+const sending = ref(false)
 
 async function polish(): Promise<void> {
   const draft = reply.value.trim()
@@ -196,6 +197,27 @@ async function polish(): Promise<void> {
       e instanceof ApiError ? e.message : 'Could not polish the draft. Please try again.'
   } finally {
     polishing.value = false
+  }
+}
+
+async function sendReply(): Promise<void> {
+  const body = reply.value.trim()
+  if (!body || sending.value || !ticket.value) return
+  sending.value = true
+  polishNote.value = null
+  try {
+    const res = await api<{ data: Message }>(`/api/tickets/${props.id}/reply`, {
+      method: 'POST',
+      body: { body },
+    })
+    // Append the sent reply to the thread and clear the composer.
+    ticket.value.messages.push(res.data)
+    reply.value = ''
+  } catch (e) {
+    polishNote.value =
+      e instanceof ApiError ? e.message : 'Could not send the reply. Please try again.'
+  } finally {
+    sending.value = false
   }
 }
 </script>
@@ -398,11 +420,12 @@ async function polish(): Promise<void> {
               </button>
               <button
                 type="button"
-                disabled
-                title="Outbound email sending isn't wired up yet"
-                class="inline-flex cursor-not-allowed items-center gap-1.5 rounded bg-accent px-3 py-1.5 text-sm font-medium text-white opacity-50"
+                :disabled="!reply.trim() || sending || polishing"
+                class="inline-flex cursor-pointer items-center gap-1.5 rounded bg-accent px-3 py-1.5 text-sm font-medium text-white transition-opacity duration-150 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                @click="sendReply"
               >
-                <Send :size="15" :stroke-width="1.75" />
+                <Loader2 v-if="sending" class="animate-spin" :size="15" />
+                <Send v-else :size="15" :stroke-width="1.75" />
                 Send reply
               </button>
             </div>

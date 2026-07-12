@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Enums\MessageDirection;
+use App\Mail\TicketReplyMail;
 use App\Models\Contact;
 use App\Models\Message;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class TicketApiTest extends TestCase
@@ -186,5 +189,68 @@ class TicketApiTest extends TestCase
             ->assertOk()
             ->assertJsonCount(3, 'data')
             ->assertJsonPath('data.0.name', 'Ada'); // ordered by name
+    }
+
+    public function test_reply_emails_the_contact_and_records_an_outbound_message(): void
+    {
+        Mail::fake();
+
+        $contact = Contact::factory()->create(['email' => 'jo@customer.test']);
+        $ticket = Ticket::factory()->create(['contact_id' => $contact->id, 'subject' => 'Login broken']);
+        // The customer's original inbound message the reply should thread onto.
+        $inbound = Message::factory()->create([
+            'ticket_id' => $ticket->id,
+            'direction' => MessageDirection::Inbound,
+            'message_id' => '<orig-123@customer.test>',
+        ]);
+
+        $this->actingAs(User::factory()->create(['name' => 'Ada']))
+            ->postJson("/api/tickets/{$ticket->id}/reply", ['body' => 'Try resetting your password.'])
+            ->assertCreated()
+            ->assertJsonPath('data.direction', 'outbound')
+            ->assertJsonPath('data.fromName', 'Ada')
+            ->assertJsonPath('data.body', 'Try resetting your password.');
+
+        $this->assertDatabaseHas('messages', [
+            'ticket_id' => $ticket->id,
+            'direction' => MessageDirection::Outbound->value,
+            'body_text' => 'Try resetting your password.',
+            'in_reply_to' => $inbound->message_id,
+        ]);
+
+        Mail::assertSent(TicketReplyMail::class, fn (TicketReplyMail $mail) => $mail->hasTo('jo@customer.test'));
+    }
+
+    public function test_reply_requires_a_body(): void
+    {
+        $ticket = Ticket::factory()->create();
+
+        $this->actingAs(User::factory()->create())
+            ->postJson("/api/tickets/{$ticket->id}/reply", ['body' => ''])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('body');
+    }
+
+    public function test_reply_rejects_a_ticket_with_no_contact_email(): void
+    {
+        Mail::fake();
+
+        // A contact with no email address — nothing to reply to.
+        $contact = Contact::factory()->create(['email' => '']);
+        $ticket = Ticket::factory()->create(['contact_id' => $contact->id]);
+
+        $this->actingAs(User::factory()->create())
+            ->postJson("/api/tickets/{$ticket->id}/reply", ['body' => 'Hello?'])
+            ->assertStatus(422);
+
+        Mail::assertNothingSent();
+    }
+
+    public function test_reply_requires_authentication(): void
+    {
+        $ticket = Ticket::factory()->create();
+
+        $this->postJson("/api/tickets/{$ticket->id}/reply", ['body' => 'Hi'])
+            ->assertUnauthorized();
     }
 }

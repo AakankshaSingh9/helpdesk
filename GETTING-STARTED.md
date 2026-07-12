@@ -206,6 +206,29 @@ Feature tests with `.eml` fixtures live in `apps/api/tests/Feature/InboundEmailT
 
 ---
 
+## 5c. Replying to a customer
+
+From a ticket page an agent writes a reply (optionally **Polish**-ing it with AI)
+and hits **Send reply**. That calls `POST /api/tickets/{ticket}/reply`, which:
+
+1. Emails the reply to the ticket's contact via Laravel Mail
+   (`app/Mail/TicketReplyMail.php`), threading it onto the customer's latest
+   inbound message with `Message-ID` / `In-Reply-To` / `References` headers so it
+   lands in the same conversation in their inbox.
+2. **Only if the send succeeds**, records the reply as an outbound `message` on
+   the thread. A transport failure returns `502` and records nothing, so the
+   thread never shows a reply the customer never received.
+
+**Mail transport** is configured by `MAIL_*` in `apps/api/.env`. The default is
+**Gmail SMTP** — set `MAIL_USERNAME` + `MAIL_FROM_ADDRESS` to your Gmail address
+and `MAIL_PASSWORD` to a [Gmail **App Password**](https://myaccount.google.com/apppasswords)
+(the account needs 2-Step Verification). For local testing without real
+delivery, set `MAIL_MAILER=log` and read the outbound mail in
+`apps/api/storage/logs/laravel.log`. Coverage lives in
+`apps/api/tests/Feature/TicketApiTest.php`.
+
+---
+
 ## 5b-i. Dashboard
 
 The home page's **Dashboard** button (or `/dashboard`) opens a ticket-overview
@@ -269,10 +292,12 @@ outbound work.
 ## 7. What's next
 
 **Phase 0** (foundation) is done — the monorepo runs and the two apps talk. The
-**ticket domain** (Phase 1: `contacts`/`tickets`/`messages`) and **inbound email
-intake** (Phase 2, webhook flavour — see [§5b](#5b-email--ticket-intake)) have now
-landed: an email opens or threads onto a ticket, viewable in the SPA. Still ahead:
-outbound replies and IMAP polling (rest of Phase 2), then the AI features
+**ticket domain** (Phase 1: `contacts`/`tickets`/`messages`), **inbound email
+intake** (Phase 2, webhook flavour — see [§5b](#5b-email--ticket-intake)), and
+**agent outbound replies** (see [§5c](#5c-replying-to-a-customer)) have now
+landed: an email opens or threads onto a ticket, an agent replies from the SPA,
+and the reply is emailed to the customer over SMTP. Still ahead: IMAP polling and
+delivering the AI auto-reply (rest of Phase 2), then the AI features
 (classification, RAG, drafting) that layer on top from Phase 3 onward.
 
 > **AI env placeholders are already in `apps/api/.env`** (and `.env.example`) — `AI_ENABLED`, `AI_PII_REDACTION`, `ANTHROPIC_*`, `VOYAGE_*` — set ahead of Phases 3–5. They do nothing yet: `AI_ENABLED=false` and the API keys are blank. Fill in the real keys locally when the AI phase starts; never commit them. See the env-variable reference in [CLAUDE.md](CLAUDE.md).

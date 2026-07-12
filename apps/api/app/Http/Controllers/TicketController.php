@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MessageDirection;
+use App\Http\Resources\MessageResource;
 use App\Http\Resources\TicketResource;
+use App\Mail\TicketReplyMail;
 use App\Models\Ticket;
 use App\Services\Ai\OpenAiClient;
 use App\Services\Ai\ReplyPolisher;
@@ -10,6 +13,8 @@ use App\Services\Ai\TicketSummarizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -133,6 +138,68 @@ class TicketController extends Controller
                 'reason' => $reason,
             ],
         ]);
+    }
+
+    /**
+     * Send an agent's reply to the ticket's contact and record it on the thread.
+     *
+     * The message is only persisted if the email actually goes out — a transport
+     * failure (bad SMTP config, provider down) returns 502 and records nothing,
+     * so the thread never shows a "sent" reply the customer never received.
+     */
+    public function reply(Request $request, Ticket $ticket): JsonResponse
+    {
+        $validated = $request->validate([
+            'body' => ['required', 'string', 'max:10000'],
+        ]);
+
+        $ticket->loadMissing('contact');
+        $to = $ticket->contact?->email;
+        if ($to === null || $to === '') {
+            return response()->json([
+                'message' => 'This ticket has no contact email to reply to.',
+            ], 422);
+        }
+
+        $agentName = (string) ($request->user()?->name ?? config('helpdesk.agent_name', 'Support'));
+
+        // Thread onto the customer's latest inbound message so the reply lands in
+        // the same conversation in their inbox.
+        $lastInbound = $ticket->messages()
+            ->where('direction', MessageDirection::Inbound)
+            ->latest()
+            ->first();
+
+        $messageId = '<reply-'.Str::uuid().'@helpdesk>';
+
+        try {
+            Mail::to($to)->send(new TicketReplyMail(
+                $ticket,
+                $validated['body'],
+                $agentName,
+                $messageId,
+                $lastInbound?->message_id,
+            ));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'The reply could not be sent — check the mail configuration.',
+            ], 502);
+        }
+
+        $message = $ticket->messages()->create([
+            'direction' => MessageDirection::Outbound,
+            'from_email' => (string) config('mail.from.address'),
+            'from_name' => $agentName,
+            'body_text' => $validated['body'],
+            'message_id' => $messageId,
+            'in_reply_to' => $lastInbound?->message_id,
+        ]);
+
+        return response()->json([
+            'data' => new MessageResource($message),
+        ], 201);
     }
 
     /**

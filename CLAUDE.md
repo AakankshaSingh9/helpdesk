@@ -55,7 +55,7 @@ Values shown below are **names + purpose only**, not the secrets themselves.
 | `DB_*` | Postgres connection (`DB_PASSWORD` is the local dev password `secret`). |
 | `REDIS_*` | Redis connection for queues/cache. |
 | `SANCTUM_STATEFUL_DOMAINS` | SPA origins allowed to authenticate via cookies. |
-| `MAIL_*` | Outbound mail (currently `log` driver — no real SMTP yet). |
+| `MAIL_*` | Outbound mail transport. `MAIL_MAILER=smtp` (default `.env` is Gmail SMTP: host `smtp.gmail.com`, port 587, `MAIL_SCHEME=null` for STARTTLS, `MAIL_PASSWORD` = a Gmail App Password). Set `MAIL_MAILER=log` to write mail to the log instead of delivering. Powers agent replies (`POST /api/tickets/{ticket}/reply`). |
 | `HELPDESK_SUPPORT_ADDRESS` | The support mailbox. Loop guard for inbound email; From address for future replies. |
 | `HELPDESK_AGENT_NAME` | Name outbound replies are signed with (auto-resolve replies + AI-polished drafts). Defaults to `Aakanksha`. |
 | `MAIL_INBOUND_SECRET` | Shared secret for the `POST /api/mail/inbound` webhook (**secret** — blank in `.env.example`; blank disables the endpoint). |

@@ -35,6 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tickets/{ticket}', [TicketController::class, 'show']);
     Route::patch('/tickets/{ticket}', [TicketController::class, 'update']);
     Route::post('/tickets/{ticket}/polish', [TicketController::class, 'polish']);
+    Route::post('/tickets/{ticket}/reply', [TicketController::class, 'reply']);
     Route::post('/tickets/{ticket}/summarize', [TicketController::class, 'summarize']);
     // Assignable staff for the assignment picker.
     Route::get('/agents', [AgentController::class, 'index']);
