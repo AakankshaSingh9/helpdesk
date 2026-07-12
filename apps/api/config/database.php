@@ -86,7 +86,11 @@ return [
 
         'pgsql' => [
             'driver' => 'pgsql',
-            'url' => env('DB_URL'),
+            // A full connection URL wins over the discrete DB_* vars below. Fall
+            // back to DATABASE_URL, which is the name managed Postgres providers
+            // (Railway, Heroku, …) inject — so a single reference variable wires
+            // up the whole connection and the docker-compose DB_HOST is ignored.
+            'url' => env('DB_URL', env('DATABASE_URL')),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
             'database' => env('DB_DATABASE', 'laravel'),
