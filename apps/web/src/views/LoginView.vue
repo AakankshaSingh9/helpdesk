@@ -42,7 +42,7 @@ async function onSubmit() {
   submitting.value = true
   try {
     await auth.login(data.email, data.password)
-    const redirect = (route.query.redirect as string) || '/home'
+    const redirect = (route.query.redirect as string) || '/dashboard'
     await router.replace(redirect)
   } catch (e) {
     if (e instanceof ApiError && e.status === 422) {
