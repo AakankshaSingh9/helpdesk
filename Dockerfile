@@ -19,7 +19,8 @@ ENV VITE_API_URL=""
 RUN npm run build
 
 # ── Stage 2: the Laravel API (also serves the SPA) ──────────────────────────
-FROM php:8.3-cli AS api
+# PHP 8.4 to match the dev image and composer.lock (Symfony 8.x needs >=8.4.1).
+FROM php:8.4-cli AS api
 
 # System libs + the PHP extensions the app needs (Postgres, bcmath, zip).
 RUN apt-get update && apt-get install -y --no-install-recommends \
